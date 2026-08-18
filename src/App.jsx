@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
 import { auth, db } from "./lib/firebaseClient";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
@@ -19,36 +19,46 @@ export default function App() {
   const [role, setRole] = useState(null); // "student" | "moderator"
   const [checkingSession, setCheckingSession] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
+    let isCurrent = true;
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser || null);
 
       if (currentUser) {
         try {
           const snap = await getDoc(doc(db, "users", currentUser.uid));
-          setRole(snap.exists() ? snap.data().role : "student");
+          if (isCurrent) setRole(snap.exists() ? snap.data().role : "student");
         } catch (err) {
           console.error("Error fetching role:", err);
-          setRole("student");
+          if (isCurrent) setRole("student");
         }
-        setIsSidebarOpen(true);
+        if (isCurrent) setIsSidebarOpen(true);
       } else {
         setRole(null);
         setIsSidebarOpen(false);
       }
 
-      setCheckingSession(false);
+      if (isCurrent) setCheckingSession(false);
     });
-    return () => unsubscribe();
+    return () => {
+      isCurrent = false;
+      unsubscribe();
+    };
   }, []);
 
   async function handleLogout() {
+    setIsLoggingOut(true);
     try {
       await signOut(auth);
       setIsSidebarOpen(false);
+      navigate("/", { replace: true });
     } catch (err) {
       console.error("Error signing out:", err);
+    } finally {
+      setIsLoggingOut(false);
     }
   }
 
@@ -68,6 +78,7 @@ export default function App() {
         user={user}
         role={role}
         onLogout={handleLogout}
+        isLoggingOut={isLoggingOut}
         isSidebarOpen={isSidebarOpen}
         setIsSidebarOpen={setIsSidebarOpen}
       />
@@ -87,7 +98,7 @@ export default function App() {
           }`}
         >
           <Routes>
-            {/* Public routes */}
+            {/* Anyone can browse the board; an account is required to post or manage items. */}
             <Route path="/" element={<HomePage />} />
             <Route path="/item/:id" element={<ItemDetailPage user={user} />} />
 
@@ -114,6 +125,7 @@ export default function App() {
             {/* Auth routes */}
             <Route path="/login" element={!user ? <LoginPage /> : <Navigate to="/items" replace />} />
             <Route path="/register" element={!user ? <RegisterPage /> : <Navigate to="/items" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </main>
       </div>

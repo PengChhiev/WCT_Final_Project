@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 
-export default function Navbar({ user, role, onLogout, isSidebarOpen, setIsSidebarOpen }) {
+export default function Navbar({ user, role, onLogout, isLoggingOut, isSidebarOpen, setIsSidebarOpen }) {
   return (
     <header className="bg-white border-b border-gray-200 fixed top-0 left-0 right-0 h-16 z-50">
       <nav className="h-full px-4 flex items-center justify-between">
@@ -32,9 +32,10 @@ export default function Navbar({ user, role, onLogout, isSidebarOpen, setIsSideb
               <span className="text-sm text-gray-500 hidden sm:inline">{user.email}</span>
               <button
                 onClick={onLogout}
+                disabled={isLoggingOut}
                 className="text-sm font-medium text-red-600 hover:text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-50"
               >
-                Logout
+                {isLoggingOut ? "Logging out..." : "Logout"}
               </button>
             </>
           ) : (
